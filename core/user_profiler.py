@@ -98,7 +98,7 @@ class UserProfiler:
     
     def update_user_interests(self, user_id: int, new_interests: List[str]):
         """
-        更新用户兴趣
+        更新用户手动输入的兴趣（只更新interests字段）
         
         Args:
             user_id: 用户ID
@@ -118,7 +118,31 @@ class UserProfiler:
         conn.commit()
         conn.close()
         
-        logger.info(f"更新用户 {user_id} 的兴趣")
+        logger.info(f"更新用户 {user_id} 的手动兴趣")
+    
+    def update_learned_interests(self, user_id: int, learned_interests: List[str]):
+        """
+        更新系统自动学习的兴趣（只更新learned_interests字段）
+        
+        Args:
+            user_id: 用户ID
+            learned_interests: 学习到的兴趣列表
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        learned_json = json.dumps(learned_interests)
+        
+        cursor.execute('''
+            UPDATE users 
+            SET learned_interests = ?, last_active = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (learned_json, user_id))
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"更新用户 {user_id} 的学习兴趣")
     
     def record_user_behavior(self, user_id: int, article_id: str, action_type: str):
         """
@@ -273,7 +297,7 @@ class UserProfiler:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, username, interests, created_at, last_active
+            SELECT id, username, interests, learned_interests, created_at, last_active
             FROM users
             WHERE id = ?
         ''', (user_id,))
@@ -286,8 +310,9 @@ class UserProfiler:
                 'id': row[0],
                 'username': row[1],
                 'interests': json.loads(row[2]) if row[2] else [],
-                'created_at': row[3],
-                'last_active': row[4]
+                'learned_interests': json.loads(row[3]) if row[3] else [],
+                'created_at': row[4],
+                'last_active': row[5]
             }
         return None
     
@@ -365,28 +390,42 @@ class UserProfiler:
     
     def update_user_profile_from_behavior(self, user_id: int):
         """
-        根据用户行为更新用户画像
+        根据用户行为更新学习兴趣（只更新learned_interests，不影响手动interests）
         
         Args:
             user_id: 用户ID
         """
-        # 获取用户关键词
+        user_info = self.get_user_by_id(user_id)
+        if not user_info:
+            logger.warning(f"用户 {user_id} 不存在")
+            return
+        
+        # 从行为中提取关键词
         keywords = self.get_user_keywords(user_id, top_k=15)
         
         # 获取用户偏好类别
         preferred_categories = self.get_user_preferred_categories(user_id)
         top_categories = [cat for cat, score in preferred_categories[:5]]
         
-        # 合并关键词和类别作为新的兴趣
-        new_interests = keywords + top_categories
+        # 合并关键词和类别
+        learned = keywords + top_categories
         
-        # 去重并限制长度
-        new_interests = list(dict.fromkeys(new_interests))[:20]
+        # 去重
+        seen = set()
+        unique_learned = []
+        for item in learned:
+            item_lower = item.lower()
+            if item_lower not in seen:
+                seen.add(item_lower)
+                unique_learned.append(item)
         
-        # 更新用户兴趣
-        self.update_user_interests(user_id, new_interests)
+        # 限制数量
+        final_learned = unique_learned[:20]
         
-        logger.info(f"基于行为数据更新用户 {user_id} 的画像")
+        # 只更新learned_interests字段
+        self.update_learned_interests(user_id, final_learned)
+        
+        logger.info(f"更新用户 {user_id} 的学习兴趣: {len(final_learned)} 个")
     
     def train_user_tfidf(self, user_id: int, min_behaviors: int = 10) -> bool:
         """

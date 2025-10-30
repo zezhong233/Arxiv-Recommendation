@@ -119,6 +119,58 @@ def refresh_recommendations():
         logger.error(f"刷新推荐失败: {e}")
         return jsonify({'error': '刷新失败'}), 500
 
+@app.route('/settings')
+def settings():
+    """用户设置页面"""
+    # 获取用户信息
+    user_info = user_profiler.get_user_by_id(DEFAULT_USER_ID)
+    
+    # 获取用户行为统计
+    behavior_count = recommendation_engine.get_user_behavior_count(DEFAULT_USER_ID)
+    
+    # 检查TF-IDF模型状态
+    has_tfidf_model = user_profiler.load_user_tfidf(DEFAULT_USER_ID) is not None
+    
+    return render_template('settings.html', 
+                         user=user_info, 
+                         behavior_count=behavior_count,
+                         has_tfidf_model=has_tfidf_model)
+
+@app.route('/api/update_interests', methods=['POST'])
+
+def update_interests():
+    """更新用户兴趣"""
+    data = request.get_json()
+    interests_text = data.get('interests', '')
+    
+    if not interests_text:
+        return jsonify({'error': '兴趣标签不能为空'}), 400
+    
+    # 解析兴趣标签（支持逗号、分号、换行分隔）
+    import re
+    interests = re.split(r'[,，;；\n]+', interests_text)
+    interests = [interest.strip() for interest in interests if interest.strip()]
+    
+    if not interests:
+        return jsonify({'error': '请至少输入一个兴趣标签'}), 400
+    
+    if len(interests) > 50:
+        return jsonify({'error': '兴趣标签最多50个'}), 400
+    
+    try:
+        # 更新用户兴趣
+        user_profiler.update_user_interests(DEFAULT_USER_ID, interests)
+        
+        logger.info(f"用户兴趣已更新: {interests[:10]}...")
+        
+        return jsonify({
+            'message': '兴趣标签更新成功',
+            'interests': interests
+        })
+    except Exception as e:
+        logger.error(f"更新兴趣失败: {e}")
+        return jsonify({'error': '更新失败，请重试'}), 500
+
 if __name__ == '__main__':
     # 启动应用
     app.run(

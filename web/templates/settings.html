@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}用户设置 - Arxiv智能推荐系统{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2>
+            <i class="fas fa-cog"></i> 用户设置
+        </h2>
+        <p class="text-muted">自定义您的兴趣标签，系统将根据这些标签为您推荐相关文章</p>
+    </div>
+</div>
+
+<!-- 用户统计信息 -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-mouse-pointer text-primary"></i> 交互次数
+                </h5>
+                <h2 class="text-primary">{{ behavior_count }}</h2>
+                <p class="text-muted small mb-0">点击、点赞、收藏次数</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-brain text-success"></i> 推荐模式
+                </h5>
+                <h2 class="text-success">
+                    {% if behavior_count >= 10 %}
+                    混合模式
+                    {% else %}
+                    基础模式
+                    {% endif %}
+                </h2>
+                <p class="text-muted small mb-0">
+                    {% if behavior_count >= 10 %}
+                    TF-IDF + Sentence-BERT
+                    {% else %}
+                    仅 Sentence-BERT (需10次交互)
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-robot text-info"></i> TF-IDF模型
+                </h5>
+                <h2 class="text-info">
+                    {% if has_tfidf_model %}
+                    <i class="fas fa-check-circle"></i>
+                    {% else %}
+                    <i class="fas fa-times-circle"></i>
+                    {% endif %}
+                </h2>
+                <p class="text-muted small mb-0">
+                    {% if has_tfidf_model %}
+                    已训练
+                    {% else %}
+                    未训练
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 兴趣标签显示 -->
+<div class="row mb-4">
+    <div class="col-lg-10 offset-lg-1">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-eye"></i> 当前兴趣标签</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-user-edit text-primary"></i> 手动设置的兴趣</h6>
+                        <div class="mb-3">
+                            {% if user and user.interests %}
+                                {% for interest in user.interests %}
+                                    <span class="badge bg-primary me-1 mb-1">{{ interest }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">暂无手动兴趣</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-robot text-success"></i> 系统学习的兴趣</h6>
+                        <div class="mb-3">
+                            {% if user and user.learned_interests %}
+                                {% for interest in user.learned_interests %}
+                                    <span class="badge bg-success me-1 mb-1">{{ interest }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">暂无学习兴趣（需10次交互）</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 兴趣标签设置 -->
+<div class="row">
+    <div class="col-lg-8 offset-lg-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-edit"></i> 编辑手动兴趣标签
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="interests-form">
+                    <div class="mb-3">
+                        <label for="interests-input" class="form-label">
+                            <strong>手动兴趣标签</strong>
+                            <span class="text-muted">(每行一个，或用逗号分隔)</span>
+                        </label>
+                        <textarea 
+                            class="form-control" 
+                            id="interests-input" 
+                            rows="8" 
+                            placeholder="例如：&#10;machine learning&#10;deep learning&#10;computer vision&#10;natural language processing"
+                        >{% if user and user.interests %}{{ user.interests | join('\n') }}{% endif %}</textarea>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> 
+                            只能编辑手动兴趣，系统学习的兴趣由行为自动生成
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>常用标签推荐：</strong>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2 mb-2" onclick="addInterest('machine learning')">machine learning</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2 mb-2" onclick="addInterest('deep learning')">deep learning</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2 mb-2" onclick="addInterest('computer vision')">computer vision</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2 mb-2" onclick="addInterest('natural language processing')">NLP</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2 mb-2" onclick="addInterest('reinforcement learning')">reinforcement learning</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2 mb-2" onclick="addInterest('neural networks')">neural networks</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2 mb-2" onclick="addInterest('artificial intelligence')">AI</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2 mb-2" onclick="addInterest('data science')">data science</button>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i> 保存设置
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> 返回首页
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 使用说明 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-question-circle"></i> 使用说明
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li class="mb-2">
+                        <strong>手动兴趣</strong>：您自己输入的兴趣标签，可随时修改
+                    </li>
+                    <li class="mb-2">
+                        <strong>学习兴趣</strong>：系统从您的行为中自动学习，达到10次交互后生成
+                    </li>
+                    <li class="mb-2">
+                        <strong>推荐逻辑</strong>：系统同时使用手动兴趣和学习兴趣进行推荐
+                    </li>
+                    <li>
+                        <strong>持续优化</strong>：每20次交互，系统会更新学习兴趣
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addInterest(interest) {
+    const textarea = document.getElementById('interests-input');
+    const currentValue = textarea.value.trim();
+    
+    // 检查是否已存在
+    const interests = currentValue.split('\n').map(i => i.trim().toLowerCase());
+    if (interests.includes(interest.toLowerCase())) {
+        alert('该标签已存在');
+        return;
+    }
+    
+    // 添加新标签
+    if (currentValue) {
+        textarea.value = currentValue + '\n' + interest;
+    } else {
+        textarea.value = interest;
+    }
+}
+
+document.getElementById('interests-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const interestsText = document.getElementById('interests-input').value;
+    
+    if (!interestsText.trim()) {
+        alert('请至少输入一个兴趣标签');
+        return;
+    }
+    
+    // 显示加载状态
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    
+    fetch('/api/update_interests', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ interests: interestsText })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('错误: ' + data.error);
+        } else {
+            alert('手动兴趣标签更新成功！\n\n已保存 ' + data.interests.length + ' 个标签');
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('更新失败，请重试');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+});
+</script>
+
+{% endblock %}

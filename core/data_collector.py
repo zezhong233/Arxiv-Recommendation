@@ -58,7 +58,8 @@ class ArxivDataCollector:
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
-                interests TEXT,  -- JSON格式存储用户兴趣
+                interests TEXT,  -- JSON格式存储用户手动输入的兴趣
+                learned_interests TEXT,  -- JSON格式存储系统自动学习的兴趣
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )

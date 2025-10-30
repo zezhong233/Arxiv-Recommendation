@@ -17,7 +17,7 @@ class Config:
     
     # Arxiv API配置
     ARXIV_API_URL = "http://export.arxiv.org/api/query"
-    MAX_RESULTS_PER_QUERY = 200  # 每次查询最多获取50篇（提高限制）
+    MAX_RESULTS_PER_QUERY = 100  # 每次查询最多获取50篇（提高限制）
     RETRAIN_THRESHOLD = 20  # TF-IDF重新训练阈值（新增文章数）
     DEFAULT_CATEGORIES = [
         'cs.AI',  # Artificial Intelligence
@@ -40,7 +40,7 @@ class Config:
     
     # Flask配置
     SECRET_KEY = 'your-secret-key-here'
-    DEBUG = True
+    DEBUG = False
     HOST = '0.0.0.0'
     PORT = 5000
     
@@ -66,5 +66,5 @@ config = {
 def get_config(config_name=None):
     """获取配置对象"""
     if config_name is None:
-        config_name = os.environ.get('FLASK_ENV', 'default')
+        config_name = os.environ.get('FLASK_ENV', 'production')
     return config[config_name]

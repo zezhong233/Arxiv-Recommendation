@@ -28,18 +28,26 @@ logger = logging.getLogger(__name__)
 class TextAnalyzer:
     """文本分析器"""
     
+    # 类级别的共享实例（避免重复加载模型）
+    _shared_sentence_model = None
+    _shared_tfidf_vectorizer = None
+    _instance_count = 0
+    
     def __init__(self, config=None):
         self.config = config or get_config()
         self.db_path = self.config.DATABASE_URL
         self.model_dir = self.config.MODEL_DIR
         
-        # 初始化模型
+        # 初始化模型（使用共享实例）
         self.sentence_model = None
         self.tfidf_vectorizer = None
         self.load_or_create_models()
         
         # 下载NLTK数据
         self._download_nltk_data()
+        
+        TextAnalyzer._instance_count += 1
+        logger.info(f"📊 TextAnalyzer实例数: {TextAnalyzer._instance_count}")
     
     def _download_nltk_data(self):
         """下载必要的NLTK数据"""
@@ -54,19 +62,29 @@ class TextAnalyzer:
             nltk.download('stopwords')
     
     def load_or_create_models(self):
-        """加载或创建文本分析模型"""
-        # 尝试加载Sentence-BERT模型
-        try:
-            logger.info("正在加载Sentence-BERT模型...")
-            self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
-            logger.info("✅ Sentence-BERT模型加载成功!")
-        except Exception as e:
-            logger.warning(f"Sentence-BERT模型加载失败: {e}")
-            logger.info("使用离线模式,跳过Sentence-BERT模型加载")
-            self.sentence_model = None
+        """加载或创建文本分析模型（使用共享实例避免重复加载）"""
+        # 使用共享的Sentence-BERT模型
+        if TextAnalyzer._shared_sentence_model is None:
+            try:
+                logger.info("正在加载Sentence-BERT模型...")
+                TextAnalyzer._shared_sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
+                logger.info("✅ Sentence-BERT模型加载成功!")
+            except Exception as e:
+                logger.warning(f"Sentence-BERT模型加载失败: {e}")
+                logger.info("使用离线模式,跳过Sentence-BERT模型加载")
+                TextAnalyzer._shared_sentence_model = None
+        else:
+            logger.info("✅ 使用已加载的Sentence-BERT模型（共享实例）")
         
-        # 加载或创建TF-IDF向量化器（智能更新）
-        self._load_or_update_tfidf_model()
+        self.sentence_model = TextAnalyzer._shared_sentence_model
+        
+        # 使用共享的TF-IDF向量化器
+        if TextAnalyzer._shared_tfidf_vectorizer is None:
+            self._load_or_update_tfidf_model()
+            TextAnalyzer._shared_tfidf_vectorizer = self.tfidf_vectorizer
+        else:
+            logger.info("✅ 使用已加载的TF-IDF向量化器（共享实例）")
+            self.tfidf_vectorizer = TextAnalyzer._shared_tfidf_vectorizer
     
     def _load_or_update_tfidf_model(self):
         """智能加载或更新TF-IDF模型"""
@@ -422,4 +440,3 @@ if __name__ == "__main__":
     # 批量分析文章
     count = analyzer.batch_analyze_articles(limit=50)
     print(f"分析了 {count} 篇文章")
-    
