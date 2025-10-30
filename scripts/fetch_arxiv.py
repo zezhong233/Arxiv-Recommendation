@@ -31,7 +31,8 @@ def main():
     from config.settings import get_config
     config = get_config()
     
-    categories = ['astro-ph.GA']  # 星系天体物理学
+
+    categories  = [config.YOUR_CATEGORIES]
     MAX_FETCH_DAYS = 7
     INITIA_FETCH_DAYS = 30
     # 3. 检查数据库状态和上次更新时间

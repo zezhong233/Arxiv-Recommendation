@@ -19,6 +19,7 @@ class Config:
     ARXIV_API_URL = "http://export.arxiv.org/api/query"
     MAX_RESULTS_PER_QUERY = 100  # 每次查询最多获取50篇（提高限制）
     RETRAIN_THRESHOLD = 20  # TF-IDF重新训练阈值（新增文章数）
+    YOUR_CATEGORIES = ['astro-ph.GA']  # 星系天体物理学 # "https://arxiv.org/category_taxonomy"
     DEFAULT_CATEGORIES = [
         'cs.AI',  # Artificial Intelligence
         'cs.LG',  # Machine Learning  
