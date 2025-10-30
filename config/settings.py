@@ -9,7 +9,7 @@ class Config:
     
     # 基础路径
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    DATA_DIR = os.path.join(BASE_DIR, 'data')
+    DATA_DIR = os.path.join(BASE_DIR, 'mine_data')
     MODEL_DIR = os.path.join(DATA_DIR, 'models')
     
     # 数据库配置
