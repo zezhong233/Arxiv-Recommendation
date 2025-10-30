@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}文章推荐系统{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding-top: 20px;
+        }
+        .article-card {
+            transition: all 0.3s;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .article-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .score-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .category-tag {
+            background-color: #e7f3ff;
+            color: #0066cc;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin: 2px;
+            display: inline-block;
+        }
+        .btn-action {
+            border-radius: 20px;
+            padding: 8px 20px;
+            font-weight: 500;
+        }
+        .header-section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast 提示容器 -->
+    <div class="toast-container"></div>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script>
+        // 显示Toast提示
+        function showToast(message, type = 'success') {
+            const colors = {
+                'success': '#28a745',
+                'error': '#dc3545',
+                'info': '#17a2b8'
+            };
+            
+            const toastHtml = `
+                <div class="toast align-items-center text-white border-0" role="alert" style="background-color: ${colors[type] || colors.info}">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="fas fa-check-circle me-2"></i>${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            
+            $('.toast-container').append(toastHtml);
+            const toastElement = $('.toast-container .toast').last()[0];
+            const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+            toast.show();
+            
+            // 3秒后移除元素
+            setTimeout(() => {
+                toastElement.remove();
+            }, 3500);
+        }
+
+        // AJAX请求函数
+        function makeRequest(url, data, successMsg) {
+            $.ajax({
+                url: url,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(response) {
+                    showToast(successMsg || response.message, 'success');
+                },
+                error: function(xhr) {
+                    showToast(xhr.responseJSON?.error || '操作失败', 'error');
+                }
+            });
+        }
+
+        // 点赞
+        function likeArticle(articleId) {
+            makeRequest('/api/like', {article_id: articleId}, '👍 点赞成功');
+            $('#btn-like-' + articleId).addClass('btn-success').removeClass('btn-outline-success');
+        }
+
+        // 不喜欢
+        function dislikeArticle(articleId) {
+            makeRequest('/api/dislike', {article_id: articleId}, '已标记为不感兴趣');
+            $('#btn-dislike-' + articleId).addClass('btn-warning').removeClass('btn-outline-warning');
+        }
+
+        // 收藏
+        function saveArticle(articleId) {
+            makeRequest('/api/save', {article_id: articleId}, '⭐ 收藏成功');
+            $('#btn-save-' + articleId).addClass('btn-info').removeClass('btn-outline-info');
+        }
+
+        // 刷新推荐
+        function refreshRecommendations() {
+            const btn = $('#refresh-btn');
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> 刷新中...');
+            
+            $.ajax({
+                url: '/api/refresh',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({}),
+                success: function(response) {
+                    showToast('🎉 ' + response.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                },
+                error: function(xhr) {
+                    btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i> 刷新推荐');
+                    showToast(xhr.responseJSON?.error || '刷新失败', 'error');
+                }
+            });
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

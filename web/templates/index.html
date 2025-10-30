@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Arxiv智能推荐系统{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <!-- 欢迎区域 -->
+        <div class="jumbotron bg-primary text-white p-4 rounded">
+            <div class="container text-center">
+                <h1 class="display-5">
+                    <i class="fas fa-brain"></i> Arxiv智能推荐系统
+                </h1>
+                <p class="lead">
+                    基于AI的个性化学术论文推荐 - 为您推荐最相关的研究内容
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 推荐文章列表 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>
+                <i class="fas fa-star text-warning"></i> 为您推荐
+            </h2>
+            <button class="btn btn-primary" onclick="refreshRecommendations()">
+                <i class="fas fa-sync-alt"></i> 刷新推荐
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row" id="recommendations-container">
+    {% if recommendations %}
+        {% for article in recommendations %}
+        <div class="col-12 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a href="{{ article.pdf_url }}" target="_blank" class="text-decoration-none">
+                            {{ article.title }}
+                        </a>
+                    </h5>
+                    <p class="text-muted small mb-2">
+                        <i class="fas fa-user"></i> {{ article.authors[:100] }}{% if article.authors|length > 100 %}...{% endif %}
+                    </p>
+                    <p class="text-muted small mb-2">
+                        <i class="fas fa-tag"></i> {{ article.categories }}
+                        <span class="ms-3">
+                            <i class="fas fa-calendar"></i> {{ article.published_date[:10] }}
+                        </span>
+                        <span class="ms-3 badge bg-info">
+                            推荐分数: {{ "%.3f"|format(article.recommendation_score) }}
+                        </span>
+                    </p>
+                    <p class="card-text">{{ article.abstract[:300] }}{% if article.abstract|length > 300 %}...{% endif %}</p>
+                    
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-success" onclick="likeArticle('{{ article.id }}')">
+                            <i class="fas fa-thumbs-up"></i> 点赞
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="dislikeArticle('{{ article.id }}')">
+                            <i class="fas fa-thumbs-down"></i> 不感兴趣
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="saveArticle('{{ article.id }}')">
+                            <i class="fas fa-star"></i> 收藏
+                        </button>
+                        <a href="{{ article.pdf_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-file-pdf"></i> 查看PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle"></i> 暂无推荐文章，请先运行 <code>python scripts/fetch_arxiv.py</code> 获取文章数据
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function likeArticle(articleId) {
+    fetch('/api/like', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ article_id: articleId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('点赞成功！系统会根据您的反馈优化推荐');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    });
+}
+
+function dislikeArticle(articleId) {
+    fetch('/api/dislike', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ article_id: articleId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('已标记为不感兴趣');
+        // 可选：移除该文章卡片
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    });
+}
+
+function saveArticle(articleId) {
+    fetch('/api/save', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ article_id: articleId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('收藏成功！');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    });
+}
+
+function refreshRecommendations() {
+    fetch('/api/refresh', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('推荐已刷新！页面将重新加载');
+        location.reload();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('刷新失败，请重试');
+    });
+}
+</script>
+
+{% endblock %}
